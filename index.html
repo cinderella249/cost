@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="花費通報">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>花費通報</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cash:  #1D9E75; --cash-lt:#E1F5EE;
+  --card:  #185FA5; --card-lt:#E6F1FB;
+  --pers:  #993556; --pers-lt:#FBEAF0;
+  --quota: #534AB7; --quota-lt:#EEEDFE;
+  --ink:   #1a1a2e; --muted:#6b7280; --border:#e5e7eb; --bg:#f4f3f0; --white:#ffffff;
+  --safe-top:env(safe-area-inset-top,0px); --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:'Noto Sans TC',sans-serif;background:var(--ink);}
+.app{display:flex;flex-direction:column;height:100dvh;background:var(--bg);}
+.status-bar{background:var(--ink);height:var(--safe-top);flex-shrink:0;}
+
+/* Header */
+.header{background:var(--ink);padding:14px 20px 18px;flex-shrink:0;position:relative;overflow:hidden;}
+.header::before{content:'';position:absolute;top:-50px;right:-30px;width:140px;height:140px;border-radius:50%;background:rgba(29,158,117,0.15);}
+.header-row{display:flex;align-items:flex-end;justify-content:space-between;}
+.header-title{font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.3px;}
+.header-sub{font-size:11px;color:rgba(255,255,255,0.4);font-family:'DM Mono',monospace;letter-spacing:1px;margin-bottom:2px;}
+.today-badge{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:5px 12px;font-size:12px;color:rgba(255,255,255,0.7);font-family:'DM Mono',monospace;}
+
+/* Tabs */
+.tab-bar{display:grid;grid-template-columns:repeat(4,1fr);background:var(--ink);border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;}
+.tab{padding:10px 4px 14px;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;position:relative;-webkit-appearance:none;}
+.tab-icon{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;background:rgba(255,255,255,0.07);transition:background 0.2s,transform 0.15s;}
+.tab.active .tab-icon{transform:scale(1.08);}
+.tab[data-t="cash"].active  .tab-icon{background:var(--cash);}
+.tab[data-t="card"].active  .tab-icon{background:var(--card);}
+.tab[data-t="pers"].active  .tab-icon{background:var(--pers);}
+.tab[data-t="quota"].active .tab-icon{background:var(--quota);}
+.tab-label{font-size:10px;font-weight:500;color:rgba(255,255,255,0.35);white-space:nowrap;transition:color 0.2s;}
+.tab.active .tab-label{color:rgba(255,255,255,0.9);}
+.tab-pip{position:absolute;bottom:6px;width:4px;height:4px;border-radius:50%;opacity:0;transition:opacity 0.2s;}
+.tab.active .tab-pip{opacity:1;}
+.tab[data-t="cash"]  .tab-pip{background:var(--cash);}
+.tab[data-t="card"]  .tab-pip{background:var(--card);}
+.tab[data-t="pers"]  .tab-pip{background:var(--pers);}
+.tab[data-t="quota"] .tab-pip{background:var(--quota);}
+
+/* Scroll */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(14px + var(--safe-bot));}
+
+/* Form card */
+.form-card{background:var(--white);border-radius:18px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px;}
+.card-bar{height:4px;transition:background 0.25s;}
+.form-body{padding:14px 14px 16px;}
+
+/* Row header */
+.row-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.row-num{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:20px;}
+.row-delete{background:none;border:none;color:#dc2626;font-size:14px;cursor:pointer;padding:4px 10px;-webkit-appearance:none;opacity:0.55;border-radius:8px;}
+.row-delete:active{opacity:1;background:#fee2e2;}
+
+/* Fields */
+.field{margin-bottom:12px;}
+.field:last-child{margin-bottom:0;}
+.field-label{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;}
+.req{color:#ef4444;margin-left:2px;}
+
+input,select,textarea{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 12px;font-size:15px;font-family:'Noto Sans TC',sans-serif;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;appearance:none;transition:border-color 0.15s;}
+input:focus,select:focus,textarea:focus{background:#fff;border-color:var(--accent,#999);}
+textarea{resize:none;height:64px;line-height:1.5;}
+
+.select-wrap{position:relative;}
+.select-wrap::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:12px;}
+.select-wrap select{padding-right:28px;}
+
+/* Two-col row */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+.amount-wrap{position:relative;}
+.amount-pre{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-weight:500;font-size:13px;pointer-events:none;color:var(--accent,var(--muted));transition:color 0.25s;}
+.amount-wrap input{padding-left:40px;font-family:'DM Mono',monospace;font-size:18px;font-weight:500;}
+
+.quick-row{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
+.qb{padding:5px 9px;border-radius:16px;border:1.5px solid var(--border);background:var(--bg);font-size:12px;font-family:'DM Mono',monospace;color:var(--muted);cursor:pointer;-webkit-appearance:none;white-space:nowrap;transition:all 0.1s;}
+.qb:active{background:var(--accent,#eee);border-color:var(--accent);color:#fff;transform:scale(0.93);}
+
+/* Quota note */
+.quota-note{background:var(--quota-lt);border:1px solid #C5C3F0;border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--quota);line-height:1.6;}
+.quota-note strong{display:block;font-size:13px;margin-bottom:2px;}
+
+/* Add row btn */
+.add-row-btn{width:100%;padding:13px;border:2px dashed var(--border);border-radius:14px;background:none;font-size:14px;color:var(--muted);cursor:pointer;margin-bottom:12px;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color 0.15s,color 0.15s;}
+.add-row-btn:not(:disabled):active{border-color:var(--accent,#999);color:var(--accent,#999);}
+.add-row-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+/* Submit */
+.submit-btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:17px;font-weight:700;font-family:'Noto Sans TC',sans-serif;color:#fff;cursor:pointer;background:var(--accent,var(--ink));transition:transform 0.12s,opacity 0.12s,background 0.25s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;-webkit-appearance:none;}
+.submit-btn:active{transform:scale(0.98);opacity:0.88;}
+.submit-btn:disabled{opacity:0.45;}
+
+/* Log */
+.log-card{background:var(--white);border-radius:18px;border:1px solid var(--border);overflow:hidden;}
+.log-header{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between;}
+.log-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;}
+.log-clear{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 8px;-webkit-appearance:none;}
+.log-empty{padding:18px 14px;font-size:13px;color:var(--muted);text-align:center;}
+.log-batch{padding:6px 14px;background:var(--bg);border-top:1px solid var(--border);font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.log-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid var(--border);animation:slideIn 0.2s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateY(-5px);}to{opacity:1;transform:translateY(0);}}
+.log-pip{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.log-info{flex:1;min-width:0;}
+.log-meta{font-size:11px;color:var(--muted);margin-bottom:1px;}
+.log-name{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.log-amount{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;flex-shrink:0;}
+
+/* Toast */
+.toast{position:fixed;bottom:calc(24px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(14px);background:var(--ink);color:#fff;padding:11px 22px;border-radius:100px;font-size:14px;font-weight:500;opacity:0;transition:opacity 0.22s,transform 0.22s;z-index:999;white-space:nowrap;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,0.25);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{background:var(--cash);}
+.toast.err{background:#dc2626;}
+
+/* Install */
+.install-banner{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.install-banner-text{flex:1;font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;}
+.install-banner-text strong{color:#fff;display:block;font-size:13px;margin-bottom:1px;}
+.install-close{background:none;border:none;color:rgba(255,255,255,0.4);font-size:18px;cursor:pointer;padding:4px;-webkit-appearance:none;}
+
+/* Accent */
+.t-cash  {--accent:var(--cash);}
+.t-card  {--accent:var(--card);}
+.t-pers  {--accent:var(--pers);}
+.t-quota {--accent:var(--quota);}
+.card-bar{background:var(--accent,#ccc);}
+
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}60%{transform:translateX(7px);}80%{transform:translateX(-3px);}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="status-bar"></div>
+  <div class="header">
+    <div id="installBanner" class="install-banner" style="display:none">
+      <div class="install-banner-text">
+        <strong>📲 加入主畫面</strong>
+        Safari → 分享 →「加入主畫面」即可像 App 使用
+      </div>
+      <button class="install-close" onclick="dismissInstall()">✕</button>
+    </div>
+    <div class="header-row">
+      <div>
+        <div class="header-sub">家庭記帳</div>
+        <div class="header-title">花費通報 💸</div>
+      </div>
+      <div class="today-badge" id="todayBadge">—</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active" data-t="cash">
+      <div class="tab-icon">💵</div>
+      <div class="tab-label">現金花費</div>
+      <div class="tab-pip"></div>
+    </button>
+    <button class="tab" data-t="card">
+      <div class="tab-icon">💳</div>
+      <div class="tab-label">上期卡費</div>
+      <div class="tab-pip"></div>
+    </button>
+    <button class="tab" data-t="pers">
+      <div class="tab-icon">👤</div>
+      <div class="tab-label">個人花費</div>
+      <div class="tab-pip"></div>
+    </button>
+    <button class="tab" data-t="quota">
+      <div class="tab-icon">📊</div>
+      <div class="tab-label">刷卡額度</div>
+      <div class="tab-pip"></div>
+    </button>
+  </div>
+
+  <div class="scroll-area">
+    <div id="rowsContainer"></div>
+    <button class="add-row-btn t-cash" id="addRowBtn" onclick="addRow()">
+      <span style="font-size:18px;line-height:1">＋</span>
+      <span id="addRowLabel">新增一筆</span>
+    </button>
+    <button class="submit-btn t-cash" id="submitBtn" onclick="submitAll()">
+      <span id="btnIcon">✓</span><span id="btnText">送出全部記錄</span>
+    </button>
+    <div class="log-card">
+      <div class="log-header">
+        <div class="log-title">已送出記錄</div>
+        <button class="log-clear" onclick="clearLog()">清除</button>
+      </div>
+      <div id="logList"><div class="log-empty">尚無記錄</div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0YwBQrz0OfqxyH_xqXzrPK1wO1rkOvDEsxARhaCxOcMgg1rZSQ86ZkWbltYwYd3Zc/exec';
+
+const CARDS = ['玉山卡','中信卡','富邦卡','新光卡','國泰卡'];
+
+const CATS = {
+  cash:[
+    '餐飲','生活花費','交通','娛樂','醫療','保險',
+    '房租','電費','水費','電話費','停車費','加油',
+    '旅遊','小孩','寵物','夾娃娃',
+    '車-汽車','車-機車',
+    '儲蓄-老公','儲蓄-老婆','儲蓄-辰辰',
+    '祭祀','其他',
+    '─── 收入 ───','薪資','政府補助'
+  ],
+  card:[
+    '餐飲','生活花費','交通','娛樂','醫療','保險',
+    '房租','電費','水費','電話費','停車費','加油',
+    '旅遊','小孩','寵物','夾娃娃',
+    '車-汽車','車-機車',
+    '儲蓄-老公','儲蓄-老婆','儲蓄-辰辰',
+    '祭祀','其他'
+  ],
+  pers:[
+    '餐飲','交通','娛樂','購物','醫療','保險',
+    '保養/美容','電話費','停車費','加油','其他'
+  ],
+  quota:[
+    '餐飲','生活花費','交通','娛樂','醫療','保險',
+    '房租','電費','水費','電話費','停車費','加油',
+    '旅遊','小孩','寵物','夾娃娃',
+    '車-汽車','車-機車','其他'
+  ]
+};
+
+const META = {
+  cash:  {label:'現金花費', color:'#1D9E75'},
+  card:  {label:'上期卡費', color:'#185FA5'},
+  pers:  {label:'個人花費', color:'#993556'},
+  quota: {label:'刷卡額度', color:'#534AB7'}
+};
+
+const QUICK=[10,20,30,40,50,60,70,80,90,100,200,300];
+const MAX_ROWS=10;
+let cur='cash', rowId=0;
+const rows=[], logEntries=[];
+
+(function(){
+  const now=new Date();
+  const wk=['日','一','二','三','四','五','六'];
+  document.getElementById('todayBadge').textContent=`${now.getMonth()+1}/${now.getDate()} (${wk[now.getDay()]})`;
+  const p=new URLSearchParams(location.search).get('type');
+  switchType((p&&META[p])?p:'cash');
+  addRow();
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(isIOS&&!window.navigator.standalone&&!localStorage.getItem('installDismissed'))
+    document.getElementById('installBanner').style.display='flex';
+  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchType(t.dataset.t)));
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+})();
+
+function switchType(t){
+  cur=t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  document.getElementById('submitBtn').className=`submit-btn t-${t}`;
+  document.getElementById('addRowBtn').className=`add-row-btn t-${t}`;
+  // Rebuild all rows for new type
+  rows.forEach(r=>r.card.remove());
+  rows.length=0; rowId=0;
+  addRow();
+  updateAddBtn();
+}
+
+function today(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderCatOptions(sel,t){
+  sel.innerHTML='';
+  CATS[t].forEach(c=>{
+    const o=document.createElement('option');
+    if(c.startsWith('─')){o.disabled=true;o.text=c;}
+    else{o.value=c;o.text=c;}
+    sel.appendChild(o);
+  });
+}
+
+function makeCardSelect(){
+  const wrap=document.createElement('div');
+  wrap.className='select-wrap';
+  const sel=document.createElement('select');
+  CARDS.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c; o.text=c; sel.appendChild(o);
+  });
+  wrap.appendChild(sel);
+  return {wrap, sel};
+}
+
+function makePersonSelect(){
+  const wrap=document.createElement('div');
+  wrap.className='select-wrap';
+  const sel=document.createElement('select');
+  ['老公','老婆'].forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c; o.text=c; sel.appendChild(o);
+  });
+  wrap.appendChild(sel);
+  return {wrap, sel};
+}
+
+function addRow(){
+  if(rows.length>=MAX_ROWS) return;
+  const id=++rowId;
+  const card=document.createElement('div');
+  card.className=`form-card t-${cur}`;
+  card.id=`row-${id}`;
+
+  // Build inner HTML base
+  card.innerHTML=`
+    <div class="card-bar"></div>
+    <div class="form-body">
+      <div class="row-header">
+        <span class="row-num">第 <span class="rn">${rows.length+1}</span> 筆</span>
+        <button class="row-delete" onclick="deleteRow(${id})">✕ 刪除</button>
+      </div>
+      <div class="field">
+        <div class="field-label">📅 日期<span class="req">*</span></div>
+        <input type="date" class="f-date" value="${today()}">
+      </div>
+      <div class="field" id="cat-field-${id}">
+        <div class="field-label">🏷 類別<span class="req">*</span></div>
+        <div class="select-wrap"><select class="f-cat"></select></div>
+      </div>
+      <div class="field" id="extra-field-${id}"></div>
+      <div class="field">
+        <div class="field-label">📝 項目說明<span class="req">*</span></div>
+        <input type="text" class="f-item" placeholder="例：晚餐、加油、才藝課">
+      </div>
+      <div class="field">
+        <div class="field-label">💰 金額<span class="req">*</span></div>
+        <div class="amount-wrap t-${cur}">
+          <span class="amount-pre">NT$</span>
+          <input type="number" class="f-amt" inputmode="decimal" placeholder="0" min="0">
+        </div>
+        <div class="quick-row t-${cur}"></div>
+      </div>
+      <div class="field" id="note-field-${id}">
+        <div class="field-label">💬 備註</div>
+        <textarea class="f-note" placeholder="可選填…"></textarea>
+      </div>
+    </div>`;
+
+  document.getElementById('rowsContainer').appendChild(card);
+
+  // Categories
+  const catEl=card.querySelector('.f-cat');
+  renderCatOptions(catEl, cur);
+
+  // Extra field depending on type
+  const extraField=document.getElementById(`extra-field-${id}`);
+  let cardSelEl=null, personSelEl=null;
+
+  if(cur==='card'){
+    // 卡別 dropdown
+    extraField.innerHTML='<div class="field-label">💳 卡別<span class="req">*</span></div>';
+    const {wrap,sel}=makeCardSelect();
+    extraField.appendChild(wrap);
+    cardSelEl=sel;
+  } else if(cur==='pers'){
+    // 人員 dropdown replaces note
+    extraField.innerHTML='<div class="field-label">👤 人員<span class="req">*</span></div>';
+    const {wrap,sel}=makePersonSelect();
+    extraField.appendChild(wrap);
+    personSelEl=sel;
+  } else if(cur==='quota'){
+    // 卡別 dropdown for quota
+    extraField.innerHTML='<div class="field-label">💳 卡別<span class="req">*</span></div>';
+    const {wrap,sel}=makeCardSelect();
+    extraField.appendChild(wrap);
+    cardSelEl=sel;
+  }
+
+  // Quick amounts
+  const qr=card.querySelector('.quick-row');
+  QUICK.forEach(n=>{
+    const b=document.createElement('button');
+    b.className='qb';
+    b.textContent=n>=1000?`${n/1000}K`:String(n);
+    b.addEventListener('click',()=>{
+      const el=card.querySelector('.f-amt');
+      el.value=(parseFloat(el.value)||0)+n;
+    });
+    qr.appendChild(b);
+  });
+
+  // Quota note banner
+  if(cur==='quota'){
+    const banner=document.createElement('div');
+    banner.className='quota-note';
+    banner.innerHTML='<strong>📊 刷卡額度通報</strong>此筆資料只記錄到「刷卡額度通報」分頁，不計入每月收支。';
+    card.querySelector('.form-body').insertBefore(banner, card.querySelector('.row-header'));
+  }
+
+  rows.push({
+    id, card, catEl,
+    dateEl: card.querySelector('.f-date'),
+    itemEl: card.querySelector('.f-item'),
+    amtEl:  card.querySelector('.f-amt'),
+    noteEl: card.querySelector('.f-note'),
+    cardSelEl, personSelEl
+  });
+
+  updateAddBtn();
+  updateRowNumbers();
+  if(rows.length>1) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function deleteRow(id){
+  if(rows.length<=1){showToast('至少保留一筆','err');return;}
+  const idx=rows.findIndex(r=>r.id===id);
+  if(idx===-1) return;
+  rows[idx].card.style.opacity='0';
+  rows[idx].card.style.transform='translateY(-8px)';
+  rows[idx].card.style.transition='opacity 0.18s,transform 0.18s';
+  setTimeout(()=>{rows[idx].card.remove();rows.splice(idx,1);updateAddBtn();updateRowNumbers();},180);
+}
+
+function updateAddBtn(){
+  const rem=MAX_ROWS-rows.length;
+  document.getElementById('addRowLabel').textContent=
+    rem>0?`新增一筆（還可加 ${rem} 筆）`:'已達上限 10 筆';
+  document.getElementById('addRowBtn').disabled=rem<=0;
+}
+
+function updateRowNumbers(){
+  rows.forEach((r,i)=>{const rn=r.card.querySelector('.rn');if(rn) rn.textContent=i+1;});
+}
+
+async function submitAll(){
+  const payloads=[];
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i];
+    const date   = r.dateEl.value;
+    const cat    = r.catEl.value;
+    const item   = r.itemEl.value.trim();
+    const amount = parseFloat(r.amtEl.value);
+    const note   = r.noteEl ? r.noteEl.value.trim() : '';
+    const cardType = r.cardSelEl ? r.cardSelEl.value : '';
+    const person   = r.personSelEl ? r.personSelEl.value : '';
+
+    if(!date||!cat||!item||!amount||amount<=0){
+      showToast(`第 ${i+1} 筆資料未填完整`,'err');
+      r.itemEl.style.animation='none'; r.itemEl.offsetHeight;
+      r.itemEl.style.animation='shake 0.35s ease';
+      r.card.scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
+
+    payloads.push({
+      type: cur,
+      typeLabel: META[cur].label,
+      date, category: cat, item, amount, note,
+      cardType, person
+    });
+  }
+
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;
+  document.getElementById('btnText').textContent=`傳送 ${payloads.length} 筆中…`;
+  document.getElementById('btnIcon').textContent='⟳';
+
+  await Promise.allSettled(payloads.map(p=>
+    fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify(p)})
+  ));
+
+  addBatchLog(payloads);
+  showToast(`✓ ${payloads.length} 筆已記錄！`,'ok');
+  if(navigator.vibrate) navigator.vibrate([30,40,30]);
+
+  rows.forEach(r=>r.card.remove());
+  rows.length=0; rowId=0;
+  addRow();
+  btn.disabled=false;
+  document.getElementById('btnText').textContent='送出全部記錄';
+  document.getElementById('btnIcon').textContent='✓';
+}
+
+function addBatchLog(batch){
+  const list=document.getElementById('logList');
+  if(list.querySelector('.log-empty')) list.innerHTML='';
+  const now=new Date();
+  const hdr=document.createElement('div');
+  hdr.className='log-batch';
+  hdr.textContent=`${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} · 送出 ${batch.length} 筆`;
+  list.prepend(hdr);
+  [...batch].reverse().forEach(p=>{
+    const sub=p.person?` [${p.person}]`:p.cardType?` [${p.cardType}]`:'';
+    const div=document.createElement('div');
+    div.className='log-item';
+    div.innerHTML=`
+      <div class="log-pip" style="background:${META[p.type].color}"></div>
+      <div class="log-info">
+        <div class="log-meta">${META[p.type].label}${sub} · ${p.category} · ${p.date}</div>
+        <div class="log-name">${p.item}${p.note?' — '+p.note:''}</div>
+      </div>
+      <div class="log-amount" style="color:${META[p.type].color}">NT$${p.amount.toLocaleString()}</div>`;
+    list.insertBefore(div,hdr.nextSibling);
+  });
+}
+
+function clearLog(){
+  logEntries.length=0;
+  document.getElementById('logList').innerHTML='<div class="log-empty">尚無記錄</div>';
+}
+
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  setTimeout(()=>{t.className=`toast ${type}`;},2800);
+}
+
+function dismissInstall(){
+  localStorage.setItem('installDismissed','1');
+  document.getElementById('installBanner').style.display='none';
+}
+</script>
+</body>
+</html>

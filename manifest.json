@@ -1,0 +1,40 @@
+{
+  "name": "家庭花費通報",
+  "short_name": "花費通報",
+  "description": "家庭收支快速記帳",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "現金花費",
+      "short_name": "現金",
+      "url": "./index.html?type=cash",
+      "description": "快速記現金花費"
+    },
+    {
+      "name": "刷卡",
+      "short_name": "刷卡",
+      "url": "./index.html?type=card",
+      "description": "快速記刷卡花費"
+    }
+  ],
+  "categories": ["finance", "utilities"]
+}
