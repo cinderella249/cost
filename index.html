@@ -65,12 +65,6 @@ textarea{resize:none;height:64px;line-height:1.5;}
 .select-wrap{position:relative;}
 .select-wrap::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:12px;}
 .select-wrap select{padding-right:28px;}
-/* Code-input for category */
-.cat-wrap{position:relative;}
-.cat-code{width:60px;border:1.5px solid var(--border);border-radius:10px 0 0 10px;padding:11px 10px;font-size:15px;font-family:'DM Mono',monospace;color:var(--ink);background:var(--bg);outline:none;-webkit-appearance:none;text-align:center;border-right:none;}
-.cat-code:focus{background:#fff;border-color:var(--accent,#999);}
-.cat-name-box{flex:1;border:1.5px solid var(--border);border-radius:0 10px 10px 0;padding:11px 12px;font-size:15px;color:var(--ink);background:#fff;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cat-row{display:flex;}
 .amount-wrap{position:relative;}
 .amount-pre{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-weight:500;font-size:13px;pointer-events:none;color:var(--accent,var(--muted));transition:color 0.25s;}
 .amount-wrap input{padding-left:40px;font-family:'DM Mono',monospace;font-size:18px;font-weight:500;}
@@ -82,11 +76,11 @@ textarea{resize:none;height:64px;line-height:1.5;}
 .add-row-btn{width:100%;padding:13px;border:2px dashed var(--border);border-radius:14px;background:none;font-size:14px;color:var(--muted);cursor:pointer;margin-bottom:12px;-webkit-appearance:none;display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color 0.15s,color 0.15s;}
 .add-row-btn:not(:disabled):active{border-color:var(--accent,#999);color:var(--accent,#999);}
 .add-row-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.progress-bar-wrap{height:4px;background:var(--border);border-radius:4px;margin-bottom:12px;display:none;}
+.progress-bar{height:4px;border-radius:4px;transition:width 0.3s;}
 .submit-btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:17px;font-weight:700;font-family:'Noto Sans TC',sans-serif;color:#fff;cursor:pointer;background:var(--accent,var(--ink));transition:transform 0.12s,opacity 0.12s,background 0.25s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;-webkit-appearance:none;}
 .submit-btn:active{transform:scale(0.98);opacity:0.88;}
 .submit-btn:disabled{opacity:0.45;}
-.progress-bar-wrap{height:4px;background:var(--border);border-radius:4px;margin-bottom:12px;display:none;}
-.progress-bar{height:4px;background:var(--accent,var(--cash));border-radius:4px;transition:width 0.3s;}
 .log-card{background:var(--white);border-radius:18px;border:1px solid var(--border);overflow:hidden;}
 .log-header{padding:12px 14px 8px;display:flex;align-items:center;justify-content:space-between;}
 .log-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;}
@@ -113,6 +107,7 @@ textarea{resize:none;height:64px;line-height:1.5;}
 .t-pers{--accent:var(--pers);}
 .t-quota{--accent:var(--quota);}
 .card-bar{background:var(--accent,#ccc);}
+.progress-bar{background:var(--accent,var(--cash));}
 @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}60%{transform:translateX(7px);}80%{transform:translateX(-3px);}}
 </style>
 </head>
@@ -134,12 +129,14 @@ textarea{resize:none;height:64px;line-height:1.5;}
       <div class="today-badge" id="todayBadge">—</div>
     </div>
   </div>
+
   <div class="tab-bar">
     <button class="tab active" data-t="cash"><div class="tab-icon">💵</div><div class="tab-label">現金花費</div><div class="tab-pip"></div></button>
     <button class="tab" data-t="card"><div class="tab-icon">💳</div><div class="tab-label">上期卡費</div><div class="tab-pip"></div></button>
     <button class="tab" data-t="pers"><div class="tab-icon">👤</div><div class="tab-label">個人花費</div><div class="tab-pip"></div></button>
     <button class="tab" data-t="quota"><div class="tab-icon">📊</div><div class="tab-label">刷卡額度</div><div class="tab-pip"></div></button>
   </div>
+
   <div class="scroll-area">
     <div id="rowsContainer"></div>
     <button class="add-row-btn t-cash" id="addRowBtn" onclick="addRow()">
@@ -147,7 +144,7 @@ textarea{resize:none;height:64px;line-height:1.5;}
       <span id="addRowLabel">新增一筆</span>
     </button>
     <div class="progress-bar-wrap" id="progressWrap">
-      <div class="progress-bar t-cash" id="progressBar" style="width:0%"></div>
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
     </div>
     <button class="submit-btn t-cash" id="submitBtn" onclick="submitAll()">
       <span id="btnIcon">✓</span><span id="btnText">送出全部記錄</span>
@@ -166,21 +163,26 @@ textarea{resize:none;height:64px;line-height:1.5;}
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby0YwBQrz0OfqxyH_xqXzrPK1wO1rkOvDEsxARhaCxOcMgg1rZSQ86ZkWbltYwYd3Zc/exec';
 
-// ── 類別代碼表（1~23）──
-const CAT_MAP = {
-  1:'餐飲', 2:'生活花費', 3:'交通', 4:'娛樂', 5:'醫療',
-  6:'保險', 7:'房租', 8:'電費', 9:'水費', 10:'電話費',
-  11:'停車費', 12:'加油', 13:'旅遊', 14:'小孩', 15:'寵物',
-  16:'夾娃娃', 17:'車-汽車', 18:'車-機車', 19:'儲蓄-老公',
-  20:'儲蓄-老婆', 21:'儲蓄-辰辰', 22:'祭祀', 23:'其他'
-};
-const CAT_LIST = Object.values(CAT_MAP); // 1~23 支出類別
-
-// 收入（僅現金花費分頁顯示）
+// ── 類別定義 ──
+const EXPENSE_CATS = [
+  '餐飲','生活花費','交通','娛樂','醫療','保險',
+  '房租','電費','水費','電話費','停車費','加油',
+  '旅遊','小孩','寵物','夾娃娃',
+  '車-汽車','車-機車',
+  '儲蓄-老公','儲蓄-老婆','儲蓄-辰辰',
+  '祭祀','其他'
+];
 const INCOME_CATS = ['薪資','政府補助'];
-
 const CARDS   = ['玉山卡','中信卡','富邦卡','新光卡','國泰卡'];
 const PERSONS = ['老公','老婆'];
+
+// 各分類可用的類別
+const CATS = {
+  cash:  [...EXPENSE_CATS, '─── 收入 ───', ...INCOME_CATS],
+  card:  [...EXPENSE_CATS],
+  pers:  [...EXPENSE_CATS],
+  quota: [...EXPENSE_CATS]
+};
 
 const META = {
   cash:  {label:'現金花費', color:'#1D9E75'},
@@ -189,109 +191,79 @@ const META = {
   quota: {label:'刷卡額度', color:'#534AB7'}
 };
 
-const QUICK=[10,20,30,40,50,60,70,80,90,100,200,300];
-const MAX_ROWS=10;
-let cur='cash', rowId=0;
-const rows=[];
+const QUICK = [10,20,30,40,50,60,70,80,90,100,200,300];
+const MAX_ROWS = 10;
+let cur = 'cash', rowId = 0;
+const rows = [];
 
 // ── Init ──
 (function(){
-  const now=new Date();
-  const wk=['日','一','二','三','四','五','六'];
-  document.getElementById('todayBadge').textContent=`${now.getMonth()+1}/${now.getDate()} (${wk[now.getDay()]})`;
-  const p=new URLSearchParams(location.search).get('type');
-  switchType((p&&META[p])?p:'cash');
+  const now = new Date();
+  const wk  = ['日','一','二','三','四','五','六'];
+  document.getElementById('todayBadge').textContent =
+    `${now.getMonth()+1}/${now.getDate()} (${wk[now.getDay()]})`;
+  const p = new URLSearchParams(location.search).get('type');
+  switchType((p && META[p]) ? p : 'cash');
   addRow();
-  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
-  if(isIOS&&!window.navigator.standalone&&!localStorage.getItem('installDismissed'))
-    document.getElementById('installBanner').style.display='flex';
-  document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchType(t.dataset.t)));
-  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !window.navigator.standalone && !localStorage.getItem('installDismissed'))
+    document.getElementById('installBanner').style.display = 'flex';
+  document.querySelectorAll('.tab').forEach(t =>
+    t.addEventListener('click', () => switchType(t.dataset.t))
+  );
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 })();
 
-function switchType(t){
-  cur=t;
-  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
-  document.getElementById('submitBtn').className=`submit-btn t-${t}`;
-  document.getElementById('addRowBtn').className=`add-row-btn t-${t}`;
-  document.getElementById('progressBar').className=`progress-bar t-${t}`;
-  rows.forEach(r=>r.card.remove());
-  rows.length=0; rowId=0;
+function switchType(t) {
+  cur = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+  document.getElementById('submitBtn').className  = `submit-btn t-${t}`;
+  document.getElementById('addRowBtn').className  = `add-row-btn t-${t}`;
+  document.getElementById('progressBar').className = `progress-bar`;
+  document.getElementById('progressBar').style.background = META[t].color;
+  rows.forEach(r => r.card.remove());
+  rows.length = 0; rowId = 0;
   addRow();
   updateAddBtn();
 }
 
-function today(){
-  const d=new Date();
+function today() {
+  const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ── 類別輸入元件（代碼 + 顯示名稱）──
-function makeCatInput(rowCardEl, showIncome){
-  const wrap=document.createElement('div');
-  wrap.className='cat-row';
-
-  const code=document.createElement('input');
-  code.type='number'; code.min='1';
-  code.max= showIncome ? '99' : '23';
-  code.className='cat-code';
-  code.placeholder='代碼';
-
-  const name=document.createElement('div');
-  name.className='cat-name-box';
-  name.textContent='請輸入代碼';
-
-  code.addEventListener('input',()=>{
-    const n=parseInt(code.value);
-    if(CAT_MAP[n]){
-      name.textContent=`${n}. ${CAT_MAP[n]}`;
-      name.style.color='var(--ink)';
-    } else if(showIncome && n===24){
-      name.textContent='24. 薪資';
-      name.style.color='#3B6D11';
-    } else if(showIncome && n===25){
-      name.textContent='25. 政府補助';
-      name.style.color='#3B6D11';
-    } else if(code.value){
-      name.textContent='代碼無效';
-      name.style.color='#dc2626';
-    } else {
-      name.textContent='請輸入代碼';
-      name.style.color='var(--muted)';
-    }
+function makeCatSelect(type) {
+  const wrap = document.createElement('div'); wrap.className = 'select-wrap';
+  const sel  = document.createElement('select');
+  CATS[type].forEach(c => {
+    const o = document.createElement('option');
+    if (c.startsWith('─')) { o.disabled = true; o.text = c; }
+    else { o.value = c; o.text = c; }
+    sel.appendChild(o);
   });
-
-  wrap.appendChild(code); wrap.appendChild(name);
-  return {wrap, codeEl:code, nameEl:name};
-}
-
-function getCatFromCode(codeEl, showIncome){
-  const n=parseInt(codeEl.value);
-  if(CAT_MAP[n]) return CAT_MAP[n];
-  if(showIncome && n===24) return '薪資';
-  if(showIncome && n===25) return '政府補助';
-  return null;
-}
-
-// ── 下拉元件 ──
-function makeSelect(options){
-  const wrap=document.createElement('div'); wrap.className='select-wrap';
-  const sel=document.createElement('select');
-  options.forEach(o=>{const opt=document.createElement('option');opt.value=o;opt.text=o;sel.appendChild(opt);});
   wrap.appendChild(sel);
-  return {wrap, sel};
+  return { wrap, sel };
 }
 
-// ── 新增一列 ──
-function addRow(){
-  if(rows.length>=MAX_ROWS) return;
-  const id=++rowId;
-  const showIncome = cur==='cash';
+function makeSelect(options) {
+  const wrap = document.createElement('div'); wrap.className = 'select-wrap';
+  const sel  = document.createElement('select');
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.text = o; sel.appendChild(opt);
+  });
+  wrap.appendChild(sel);
+  return { wrap, sel };
+}
 
-  const card=document.createElement('div');
-  card.className=`form-card t-${cur}`;
-  card.id=`row-${id}`;
-  card.innerHTML=`
+function addRow() {
+  if (rows.length >= MAX_ROWS) return;
+  const id = ++rowId;
+
+  const card = document.createElement('div');
+  card.className = `form-card t-${cur}`;
+  card.id = `row-${id}`;
+  card.innerHTML = `
     <div class="card-bar"></div>
     <div class="form-body">
       <div class="row-header">
@@ -304,11 +276,7 @@ function addRow(){
         <input type="date" class="f-date" value="${today()}">
       </div>
       <div class="field" id="catfield-${id}">
-        <div class="field-label">🏷 類別代碼<span class="req">*</span>
-          <span style="font-weight:400;color:var(--muted);font-size:9px;margin-left:4px;">
-            ${showIncome?'1-23支出 / 24薪資 / 25政府補助':'1-23（見代碼表）'}
-          </span>
-        </div>
+        <div class="field-label">🏷 類別<span class="req">*</span></div>
       </div>
       <div class="field" id="extrafield-${id}"></div>
       <div class="field">
@@ -321,7 +289,7 @@ function addRow(){
           <span class="amount-pre">NT$</span>
           <input type="number" class="f-amt" inputmode="decimal" placeholder="0" min="0">
         </div>
-        <div class="quick-row t-${cur}" id="qr-${id}"></div>
+        <div class="quick-row" id="qr-${id}"></div>
       </div>
       <div class="field">
         <div class="field-label">💬 備註</div>
@@ -331,172 +299,171 @@ function addRow(){
 
   document.getElementById('rowsContainer').appendChild(card);
 
-  // 類別代碼輸入
-  const catField=document.getElementById(`catfield-${id}`);
-  const {wrap:catWrap, codeEl, nameEl}=makeCatInput(card, showIncome);
+  // 類別下拉
+  const catField = document.getElementById(`catfield-${id}`);
+  const { wrap: catWrap, sel: catEl } = makeCatSelect(cur);
   catField.appendChild(catWrap);
 
-  // 額外欄位
-  const extraField=document.getElementById(`extrafield-${id}`);
-  let cardSelEl=null, personSelEl=null;
+  // 額外欄位（卡別 or 人員）
+  const extraField = document.getElementById(`extrafield-${id}`);
+  let cardSelEl = null, personSelEl = null;
 
-  if(cur==='card'||cur==='quota'){
-    extraField.innerHTML='<div class="field-label">💳 卡別<span class="req">*</span></div>';
-    const {wrap,sel}=makeSelect(CARDS);
+  if (cur === 'card' || cur === 'quota') {
+    extraField.innerHTML = '<div class="field-label">💳 卡別<span class="req">*</span></div>';
+    const { wrap, sel } = makeSelect(CARDS);
     extraField.appendChild(wrap);
-    cardSelEl=sel;
+    cardSelEl = sel;
   }
-  if(cur==='pers'){
-    extraField.innerHTML='<div class="field-label">👤 人員<span class="req">*</span></div>';
-    const {wrap,sel}=makeSelect(PERSONS);
+  if (cur === 'pers') {
+    extraField.innerHTML = '<div class="field-label">👤 人員<span class="req">*</span></div>';
+    const { wrap, sel } = makeSelect(PERSONS);
     extraField.appendChild(wrap);
-    personSelEl=sel;
+    personSelEl = sel;
   }
 
-  // 快速金額
-  const qr=document.getElementById(`qr-${id}`);
-  QUICK.forEach(n=>{
-    const b=document.createElement('button');
-    b.className='qb'; b.textContent=n>=1000?`${n/1000}K`:String(n);
-    b.addEventListener('click',()=>{
-      const el=card.querySelector('.f-amt');
-      el.value=(parseFloat(el.value)||0)+n;
+  // 快速金額按鈕
+  const qr = document.getElementById(`qr-${id}`);
+  QUICK.forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'qb';
+    b.textContent = n >= 1000 ? `${n/1000}K` : String(n);
+    b.addEventListener('click', () => {
+      const el = card.querySelector('.f-amt');
+      el.value = (parseFloat(el.value) || 0) + n;
     });
     qr.appendChild(b);
   });
 
   rows.push({
-    id, card, codeEl, nameEl,
-    dateEl: card.querySelector('.f-date'),
-    itemEl: card.querySelector('.f-item'),
-    amtEl:  card.querySelector('.f-amt'),
-    noteEl: card.querySelector('.f-note'),
-    cardSelEl, personSelEl,
-    showIncome
+    id, card, catEl,
+    dateEl:     card.querySelector('.f-date'),
+    itemEl:     card.querySelector('.f-item'),
+    amtEl:      card.querySelector('.f-amt'),
+    noteEl:     card.querySelector('.f-note'),
+    cardSelEl, personSelEl
   });
 
-  updateAddBtn(); updateRowNumbers();
-  if(rows.length>1) card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  updateAddBtn();
+  updateRowNumbers();
+  if (rows.length > 1) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function deleteRow(id){
-  if(rows.length<=1){showToast('至少保留一筆','err');return;}
-  const idx=rows.findIndex(r=>r.id===id);
-  if(idx===-1) return;
-  rows[idx].card.style.opacity='0';
-  rows[idx].card.style.transform='translateY(-8px)';
-  rows[idx].card.style.transition='opacity 0.18s,transform 0.18s';
-  setTimeout(()=>{rows[idx].card.remove();rows.splice(idx,1);updateAddBtn();updateRowNumbers();},180);
+function deleteRow(id) {
+  if (rows.length <= 1) { showToast('至少保留一筆', 'err'); return; }
+  const idx = rows.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  rows[idx].card.style.cssText = 'opacity:0;transform:translateY(-8px);transition:opacity 0.18s,transform 0.18s;';
+  setTimeout(() => { rows[idx].card.remove(); rows.splice(idx, 1); updateAddBtn(); updateRowNumbers(); }, 180);
 }
 
-function updateAddBtn(){
-  const rem=MAX_ROWS-rows.length;
-  document.getElementById('addRowLabel').textContent=
-    rem>0?`新增一筆（還可加 ${rem} 筆）`:'已達上限 10 筆';
-  document.getElementById('addRowBtn').disabled=rem<=0;
-}
-function updateRowNumbers(){
-  rows.forEach((r,i)=>{const rn=r.card.querySelector('.rn');if(rn) rn.textContent=i+1;});
+function updateAddBtn() {
+  const rem = MAX_ROWS - rows.length;
+  document.getElementById('addRowLabel').textContent =
+    rem > 0 ? `新增一筆（還可加 ${rem} 筆）` : '已達上限 10 筆';
+  document.getElementById('addRowBtn').disabled = rem <= 0;
 }
 
-// ── 序列送出（每筆等前一筆完成再送）──
-async function submitAll(){
-  // 驗證
-  const payloads=[];
-  for(let i=0;i<rows.length;i++){
-    const r=rows[i];
+function updateRowNumbers() {
+  rows.forEach((r, i) => { const rn = r.card.querySelector('.rn'); if (rn) rn.textContent = i + 1; });
+}
+
+// ★ 序列送出（解決多筆只記2筆問題）
+async function submitAll() {
+  const payloads = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r      = rows[i];
     const date   = r.dateEl.value;
-    const cat    = getCatFromCode(r.codeEl, r.showIncome);
+    const cat    = r.catEl.value;
     const item   = r.itemEl.value.trim();
     const amount = parseFloat(r.amtEl.value);
     const note   = r.noteEl.value.trim();
-    const cardType  = r.cardSelEl  ? r.cardSelEl.value  : '';
-    const person    = r.personSelEl? r.personSelEl.value: '';
+    const cardType = r.cardSelEl   ? r.cardSelEl.value   : '';
+    const person   = r.personSelEl ? r.personSelEl.value : '';
 
-    if(!date||!cat||!item||!amount||amount<=0){
-      showToast(`第 ${i+1} 筆資料未填完整`,'err');
-      r.codeEl.style.animation='none'; r.codeEl.offsetHeight;
-      r.codeEl.style.animation='shake 0.35s ease';
-      r.card.scrollIntoView({behavior:'smooth',block:'center'});
+    if (!date || !cat || !item || !amount || amount <= 0) {
+      showToast(`第 ${i+1} 筆資料未填完整`, 'err');
+      r.catEl.style.animation = 'none'; r.catEl.offsetHeight;
+      r.catEl.style.animation = 'shake 0.35s ease';
+      r.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    payloads.push({type:cur, typeLabel:META[cur].label, date, category:cat, item, amount, note, cardType, person});
+    payloads.push({ type: cur, typeLabel: META[cur].label, date, category: cat, item, amount, note, cardType, person });
   }
 
-  const btn=document.getElementById('submitBtn');
-  const progressWrap=document.getElementById('progressWrap');
-  const progressBar=document.getElementById('progressBar');
-  btn.disabled=true;
-  progressWrap.style.display='block';
-  progressBar.style.width='0%';
+  const btn         = document.getElementById('submitBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar  = document.getElementById('progressBar');
+  btn.disabled = true;
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '0%';
 
-  const total=payloads.length;
-  let done=0;
+  const total = payloads.length;
+  let done = 0;
 
-  // ★ 序列送出：一筆完成再送下一筆，避免 Apps Script 並發覆蓋
-  for(const p of payloads){
-    document.getElementById('btnText').textContent=`送出第 ${done+1}/${total} 筆…`;
-    document.getElementById('btnIcon').textContent='⟳';
-    try{
-      await fetch(APPS_SCRIPT_URL,{
-        method:'POST', mode:'no-cors',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(p)
+  for (const p of payloads) {
+    document.getElementById('btnText').textContent = `送出第 ${done+1}/${total} 筆…`;
+    document.getElementById('btnIcon').textContent = '⟳';
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p)
       });
-    }catch(e){}
+    } catch(e) {}
     done++;
-    progressBar.style.width=`${Math.round(done/total*100)}%`;
-    // 每筆間隔 300ms，讓 Apps Script 有時間寫入
-    if(done<total) await new Promise(r=>setTimeout(r,300));
+    progressBar.style.width = `${Math.round(done / total * 100)}%`;
+    if (done < total) await new Promise(r => setTimeout(r, 500));
   }
 
   addBatchLog(payloads);
-  showToast(`✓ ${total} 筆全部記錄完成！`,'ok');
-  if(navigator.vibrate) navigator.vibrate([30,40,30]);
+  showToast(`✓ ${total} 筆全部記錄完成！`, 'ok');
+  if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
 
-  progressWrap.style.display='none';
-  rows.forEach(r=>r.card.remove());
-  rows.length=0; rowId=0;
+  progressWrap.style.display = 'none';
+  rows.forEach(r => r.card.remove());
+  rows.length = 0; rowId = 0;
   addRow();
-  btn.disabled=false;
-  document.getElementById('btnText').textContent='送出全部記錄';
-  document.getElementById('btnIcon').textContent='✓';
+  btn.disabled = false;
+  document.getElementById('btnText').textContent = '送出全部記錄';
+  document.getElementById('btnIcon').textContent = '✓';
 }
 
-function addBatchLog(batch){
-  const list=document.getElementById('logList');
-  if(list.querySelector('.log-empty')) list.innerHTML='';
-  const now=new Date();
-  const hdr=document.createElement('div');
-  hdr.className='log-batch';
-  hdr.textContent=`${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} · 送出 ${batch.length} 筆`;
+function addBatchLog(batch) {
+  const list = document.getElementById('logList');
+  if (list.querySelector('.log-empty')) list.innerHTML = '';
+  const now = new Date();
+  const hdr = document.createElement('div');
+  hdr.className = 'log-batch';
+  hdr.textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')} · 送出 ${batch.length} 筆`;
   list.prepend(hdr);
-  [...batch].reverse().forEach(p=>{
-    const sub=p.person?` [${p.person}]`:p.cardType?` [${p.cardType}]`:'';
-    const div=document.createElement('div');
-    div.className='log-item';
-    div.innerHTML=`
+  [...batch].reverse().forEach(p => {
+    const sub = p.person ? ` [${p.person}]` : p.cardType ? ` [${p.cardType}]` : '';
+    const div = document.createElement('div');
+    div.className = 'log-item';
+    div.innerHTML = `
       <div class="log-pip" style="background:${META[p.type].color}"></div>
       <div class="log-info">
         <div class="log-meta">${META[p.type].label}${sub} · ${p.category} · ${p.date}</div>
-        <div class="log-name">${p.item}${p.note?' — '+p.note:''}</div>
+        <div class="log-name">${p.item}${p.note ? ' — ' + p.note : ''}</div>
       </div>
       <div class="log-amount" style="color:${META[p.type].color}">NT$${p.amount.toLocaleString()}</div>`;
-    list.insertBefore(div,hdr.nextSibling);
+    list.insertBefore(div, hdr.nextSibling);
   });
 }
 
-function clearLog(){
-  document.getElementById('logList').innerHTML='<div class="log-empty">尚無記錄</div>';
+function clearLog() {
+  document.getElementById('logList').innerHTML = '<div class="log-empty">尚無記錄</div>';
 }
-function showToast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className=`toast ${type} show`;
-  setTimeout(()=>{t.className=`toast ${type}`;},2800);
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => { t.className = `toast ${type}`; }, 2800);
 }
-function dismissInstall(){
-  localStorage.setItem('installDismissed','1');
-  document.getElementById('installBanner').style.display='none';
+
+function dismissInstall() {
+  localStorage.setItem('installDismissed', '1');
+  document.getElementById('installBanner').style.display = 'none';
 }
 </script>
 </body>
