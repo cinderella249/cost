@@ -294,6 +294,7 @@ function addRow() {
       <div class="field">
         <div class="field-label">💬 備註</div>
         <textarea class="f-note" placeholder="可選填…"></textarea>
+        <div class="quick-row" id="nqr-${id}"></div>
       </div>
     </div>`;
 
@@ -332,6 +333,19 @@ function addRow() {
       el.value = (parseFloat(el.value) || 0) + n;
     });
     qr.appendChild(b);
+  });
+
+  // 備註快捷按鈕（老公 / 老婆）
+  const nqr = document.getElementById(`nqr-${id}`);
+  ['老公', '老婆'].forEach(label => {
+    const b = document.createElement('button');
+    b.className = 'qb';
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      const noteEl = card.querySelector('.f-note');
+      noteEl.value = label;
+    });
+    nqr.appendChild(b);
   });
 
   rows.push({
